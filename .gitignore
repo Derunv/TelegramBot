@@ -9,6 +9,8 @@
 /Lection
 /.venv
 /.idea
+*keys.*
+*key.*
 
 
 # User-specific stuff

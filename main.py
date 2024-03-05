@@ -1,4 +1,4 @@
-'''
+"""
     Використовуйте наступну архітектуру:
         - markups - для кнопок та інших налаштувань
         - handlers - для основної обробки подій та функцій 
@@ -19,23 +19,32 @@
         
     Код в деяких моментах схематичний, підлаштовуйте в залежності від своєї задачу та бібліотеку
 
-'''
-# Імпорт бібліотек для роботи із телеграм та мережою 
-import telebot
-import requests
-from telebot import types
-from handlers import * 
-from markup import * 
+"""
 
-TOKEN = '' # Вставити свій token з BotFather
+# Імпорт бібліотек для роботи із телеграм та мережою
+import aiogram
 
-# Документація до API: https://api.monobank.ua/docs/
-API_MONO = 'https://api.monobank.ua/bank/currency'
+# Потрібно створити файл bot_key.py в якому функція def key_telegram(): повертає token
+import asyncio
+from bot_key import key_telegram as key
+from aiogram import types, Dispatcher, Bot, Router
+from aiogram.filters import CommandStart
 
-bot = telebot.TeleBot(API_MONO) # Start 
+dp = Dispatcher()
 
-# Точка входу в програму 
-if __name__ == '__main__':
-    
-    # Запуск боту 
-    bot.infinity_polling()
+
+@dp.message(CommandStart())
+async def cmd_start(msg: types.Message):
+    await msg.answer("Hello World")
+
+
+async def main() -> None:
+    TOKEN = key()
+    bot = Bot(TOKEN)
+
+    await dp.start_polling(bot)
+
+
+# Точка входу в програму
+if __name__ == "__main__":
+    asyncio.run(main())
