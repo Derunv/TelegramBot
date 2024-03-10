@@ -1,5 +1,7 @@
 from bot_key import key_telegram as key
 
+from order_status_check_in_crm import order_status_check as order_status
+
 import asyncio
 
 import logging
@@ -36,18 +38,21 @@ class Form(StatesGroup):
 
     like_bots = State()
 
-    language = State()
+    number = State()
+
+    crm_data = State()
 
 
-@form_router.message(CommandStart())
-async def command_start(message: Message, state: FSMContext) -> None:
-
-    await state.set_state(Form.name)
-
-    await message.answer(
-        "Hi there! What's your name?",
-        reply_markup=ReplyKeyboardRemove(),
-    )
+# @form_router.message(CommandStart())
+# async def command_start(message: Message, state: FSMContext) -> None:
+#     print("started command")
+#     await state.set_state(Form.name)
+#
+#     await message.answer(
+#         "Hi there! What's your name?",
+#         reply_markup=ReplyKeyboardRemove(),
+#     )
+#     print(message.text)
 
 
 @form_router.message(Command("cancel"))
@@ -75,20 +80,29 @@ async def cancel_handler(message: Message, state: FSMContext) -> None:
     )
 
 
-@form_router.message(Form.name)
-async def process_name(message: Message, state: FSMContext) -> None:
+@form_router.message(CommandStart())
+async def command_start(message: Message, state: FSMContext) -> None:
+    # print("Form.name, message")
 
-    await state.update_data(name=message.text)
+    # await state.update_data(name=message.text)
 
     await state.set_state(Form.like_bots)
 
     await message.answer(
-        f"Nice to meet you, {html.quote(message.text)}!\nDid you like to write bots?",
+        "Привіт! Ласкаво просимо! Я твій чат-бот.\n"
+        "Я можу допомогти тобі дізнатися статус замовлення або підписатися на подарунковий бокс.",
         reply_markup=ReplyKeyboardMarkup(
             keyboard=[
                 [
-                    KeyboardButton(text="Yes"),
-                    KeyboardButton(text="No"),
+                    KeyboardButton(
+                        text="get_order_status",
+                    ),
+                    KeyboardButton(
+                        text="subscribe_to_gift_box",
+                    ),
+                    KeyboardButton(
+                        text="cancel",
+                    ),
                 ]
             ],
             resize_keyboard=True,
@@ -96,30 +110,46 @@ async def process_name(message: Message, state: FSMContext) -> None:
     )
 
 
-@form_router.message(Form.like_bots, F.text.casefold() == "no")
-async def process_dont_like_write_bots(message: Message, state: FSMContext) -> None:
+# @form_router.message(Form.like_bots, F.text.casefold() == "subscribe_to_gift_box")
+# async def process_dont_like_write_bots(message: Message, state: FSMContext) -> None:
+#
+#     data = await state.get_data()
+#
+#     await state.clear()
+#
+#     await message.answer(
+#         "Not bad not terrible.\nSee you soon.",
+#         reply_markup=ReplyKeyboardRemove(),
+#     )
+#
+#     await show_summary(message=message, data=data, positive=False)
 
-    data = await state.get_data()
+# @form_router.message(Form.like_bots, F.text.casefold() == "subscribe_to_gift_box")
+# async def process_dont_like_write_bots(message: Message, state: FSMContext) -> None:
+#
+#     data = await state.get_data()
+#
+#     await state.clear()
+#
+#     await message.answer(
+#         "Not bad not terrible.\nSee you soon.",
+#         reply_markup=ReplyKeyboardRemove(),
+#     )
+#
+#     await show_summary(message=message, data=data, positive=False)
 
-    await state.clear()
 
-    await message.answer(
-        "Not bad not terrible.\nSee you soon.",
-        reply_markup=ReplyKeyboardRemove(),
-    )
-
-    await show_summary(message=message, data=data, positive=False)
-
-
-@form_router.message(Form.like_bots, F.text.casefold() == "yes")
+@form_router.message(Form.like_bots, F.text.casefold() == "get_order_status")
 async def process_like_write_bots(message: Message, state: FSMContext) -> None:
 
-    await state.set_state(Form.language)
+    await state.set_state(Form.crm_data)
 
-    await message.reply(
-        "Cool! I'm too!\nWhat programming language did you use for it?",
+    await message.answer(
+        "Будь ласка вкажіть номер ТТН",
         reply_markup=ReplyKeyboardRemove(),
     )
+
+
 
 
 @form_router.message(Form.like_bots)
@@ -128,39 +158,52 @@ async def process_unknown_write_bots(message: Message) -> None:
     await message.reply("I don't understand you :(")
 
 
-@form_router.message(Form.language)
-async def process_language(message: Message, state: FSMContext) -> None:
+@form_router.message(Form.crm_data)
+async def process_like_write_bots(message: Message, state: FSMContext) -> None:
+    await state.update_data(like_bots="get_order_status")
 
-    data = await state.update_data(language=message.text)
+    await state.set_state(Form.like_bots)
 
-    await state.clear()
-
-    if message.text.casefold() == "python":
-
-        await message.reply(
-            "Python, you say? That's the language that makes my circuits light up! 😉"
-        )
-
-    await show_summary(message=message, data=data)
-
-
-async def show_summary(
-    message: Message, data: Dict[str, Any], positive: bool = True
-) -> None:
-
-    name = data["name"]
-
-    language = data.get("language", "<something unexpected>")
-
-    text = f"I'll keep in mind that, {html.quote(name)}, "
-
-    text += (
-        f"you like to write bots with {html.quote(language)}."
-        if positive
-        else "you don't like to write bots, so sad..."
+    crm_respond = order_status()
+    await message.answer(
+        f"{crm_respond}",
+        reply_markup=ReplyKeyboardRemove(),
     )
 
-    await message.answer(text=text, reply_markup=ReplyKeyboardRemove())
+
+# @form_router.message(Form.number)
+# async def process_language(message: Message, state: FSMContext) -> None:
+#
+#     data = await state.update_data(language=message.text)
+#
+#     await state.clear()
+#
+#     if message.text.casefold() == "python":
+#
+#         await message.reply(
+#             "Python, you say? That's the language that makes my circuits light up! 😉"
+#         )
+#
+#     await show_summary(message=message, data=data)
+#
+#
+# async def show_summary(
+#     message: Message, data: Dict[str, Any], positive: bool = True
+# ) -> None:
+#
+#     name = data["name"]
+#
+#     language = data.get("language", "<something unexpected>")
+#
+#     text = f"I'll keep in mind that, {html.quote(name)}, "
+#
+#     text += (
+#         f"you like to write bots with {html.quote(language)}."
+#         if positive
+#         else "you don't like to write bots, so sad..."
+#     )
+#
+#     await message.answer(text=text, reply_markup=ReplyKeyboardRemove())
 
 
 async def main():
