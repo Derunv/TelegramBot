@@ -34,7 +34,7 @@ form_router = Router()
 
 class Form(StatesGroup):
 
-    name = State()
+    start_get_data = State()
 
     like_bots = State()
 
@@ -140,7 +140,38 @@ async def command_start(message: Message, state: FSMContext) -> None:
 
 
 @form_router.message(Form.like_bots, F.text.casefold() == "get_order_status")
-async def process_like_write_bots(message: Message, state: FSMContext) -> None:
+async def process_like_write_bots_1(message: Message, state: FSMContext) -> None:
+
+    await state.set_state(Form.start_get_data)
+    await message.answer(
+        "Виберіть метод отримання данних",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(
+                        text="TTN",
+                    ),
+                    KeyboardButton(
+                        text="Phone Number",
+                    ),
+                    KeyboardButton(
+                        text="Cancel",
+                    ),
+                ]
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@form_router.message(Form.like_bots)
+async def process_unknown_write_bots_2(message: Message) -> None:
+
+    await message.reply("I don't understand you :(")
+
+
+@form_router.message(Form.start_get_data, F.text.casefold() == "ttn")
+async def process_like_write_bots_3(message: Message, state: FSMContext) -> None:
 
     await state.set_state(Form.crm_data)
 
@@ -150,19 +181,19 @@ async def process_like_write_bots(message: Message, state: FSMContext) -> None:
     )
 
 
+@form_router.message(Form.start_get_data, F.text.casefold() == "phone number")
+async def process_like_write_bots_3(message: Message, state: FSMContext) -> None:
 
+    await state.set_state(Form.crm_data)
 
-@form_router.message(Form.like_bots)
-async def process_unknown_write_bots(message: Message) -> None:
-
-    await message.reply("I don't understand you :(")
+    await message.answer(
+        "Ваш номер ",
+        reply_markup=ReplyKeyboardRemove(),
+    )
 
 
 @form_router.message(Form.crm_data)
-async def process_like_write_bots(message: Message, state: FSMContext) -> None:
-    await state.update_data(like_bots="get_order_status")
-
-    await state.set_state(Form.like_bots)
+async def process_like_write_bots_4(message: Message, state: FSMContext) -> None:
 
     crm_respond = order_status()
     await message.answer(
