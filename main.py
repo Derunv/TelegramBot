@@ -26,25 +26,3 @@ import aiogram
 
 # Потрібно створити файл bot_key.py в якому функція def key_telegram(): повертає token
 import asyncio
-from bot_key import key_telegram as key
-from aiogram import types, Dispatcher, Bot, Router
-from aiogram.filters import CommandStart
-
-dp = Dispatcher()
-
-
-@dp.message(CommandStart())
-async def cmd_start(msg: types.Message):
-    await msg.answer("Hello World")
-
-
-async def main() -> None:
-    TOKEN = key()
-    bot = Bot(TOKEN)
-
-    await dp.start_polling(bot)
-
-
-# Точка входу в програму
-if __name__ == "__main__":
-    asyncio.run(main())

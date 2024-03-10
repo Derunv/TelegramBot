@@ -1,51 +1,181 @@
-import time
-import requests
-from telebot import types
-from main import API_MONO
+from bot_key import key_telegram as key
+
+import asyncio
+
+import logging
+
+import sys
+
+from typing import Any, Dict
+
+from aiogram import Bot, Dispatcher, F, Router, html
+
+from aiogram.filters import Command, CommandStart
+
+from aiogram.fsm.context import FSMContext
+
+from aiogram.fsm.state import State, StatesGroup
+
+from aiogram.types import (
+    KeyboardButton,
+    Message,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+)
 
 
-def check_status(response: str) -> True:
-    match response.status_code:
-        case 200:
-            print('All okey')
-        case 404:
-            print(f'Check connection and url {response}')
-        case _:
-            time.sleep(10)
-            print('Something wrong. Try again!')
-        
-        
-def get_exchange_rate(currency_code: int = 980) -> tuple:
-    ''' Документація '''
-    
-    response = requests.get(API_MONO)
-    
-    if check_status(response):
-        response = response.json()
-        for item in response:
-            if item['currencyCodeA'] == currency_code and item['currencyCodeB'] == 980:  
-                return (item['rateBuy'], item['rateSell'])
-            
-    return None
+TOKEN = key()
 
 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.reply_to(message, "Start message")
+form_router = Router()
 
 
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-    try:
-        amount, currency = message.text.split()
-        amount = float(amount)
-        currency_code = _
+class Form(StatesGroup):
 
-        rate_buy, rate_sell = get_exchange_rate(currency_code)
-        if rate_buy and rate_sell:
-            converted_amount = amount * rate_buy
-            bot.reply_to(message, f"{amount} {currency} = {converted_amount:.2f} UAH")
-        else:
-            bot.reply_to(message, "Not found")
-    except Exception as e:
-        bot.reply_to(message, "Something wrong")
+    name = State()
+
+    like_bots = State()
+
+    language = State()
+
+
+@form_router.message(CommandStart())
+async def command_start(message: Message, state: FSMContext) -> None:
+
+    await state.set_state(Form.name)
+
+    await message.answer(
+        "Hi there! What's your name?",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+
+@form_router.message(Command("cancel"))
+@form_router.message(F.text.casefold() == "cancel")
+async def cancel_handler(message: Message, state: FSMContext) -> None:
+    """
+
+    Allow user to cancel any action
+
+    """
+
+    current_state = await state.get_state()
+
+    if current_state is None:
+
+        return
+
+    logging.info("Cancelling state %r", current_state)
+
+    await state.clear()
+
+    await message.answer(
+        "Cancelled.",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+
+@form_router.message(Form.name)
+async def process_name(message: Message, state: FSMContext) -> None:
+
+    await state.update_data(name=message.text)
+
+    await state.set_state(Form.like_bots)
+
+    await message.answer(
+        f"Nice to meet you, {html.quote(message.text)}!\nDid you like to write bots?",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(text="Yes"),
+                    KeyboardButton(text="No"),
+                ]
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@form_router.message(Form.like_bots, F.text.casefold() == "no")
+async def process_dont_like_write_bots(message: Message, state: FSMContext) -> None:
+
+    data = await state.get_data()
+
+    await state.clear()
+
+    await message.answer(
+        "Not bad not terrible.\nSee you soon.",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    await show_summary(message=message, data=data, positive=False)
+
+
+@form_router.message(Form.like_bots, F.text.casefold() == "yes")
+async def process_like_write_bots(message: Message, state: FSMContext) -> None:
+
+    await state.set_state(Form.language)
+
+    await message.reply(
+        "Cool! I'm too!\nWhat programming language did you use for it?",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+
+@form_router.message(Form.like_bots)
+async def process_unknown_write_bots(message: Message) -> None:
+
+    await message.reply("I don't understand you :(")
+
+
+@form_router.message(Form.language)
+async def process_language(message: Message, state: FSMContext) -> None:
+
+    data = await state.update_data(language=message.text)
+
+    await state.clear()
+
+    if message.text.casefold() == "python":
+
+        await message.reply(
+            "Python, you say? That's the language that makes my circuits light up! 😉"
+        )
+
+    await show_summary(message=message, data=data)
+
+
+async def show_summary(
+    message: Message, data: Dict[str, Any], positive: bool = True
+) -> None:
+
+    name = data["name"]
+
+    language = data.get("language", "<something unexpected>")
+
+    text = f"I'll keep in mind that, {html.quote(name)}, "
+
+    text += (
+        f"you like to write bots with {html.quote(language)}."
+        if positive
+        else "you don't like to write bots, so sad..."
+    )
+
+    await message.answer(text=text, reply_markup=ReplyKeyboardRemove())
+
+
+async def main():
+
+    bot = Bot(TOKEN)
+
+    dp = Dispatcher()
+
+    dp.include_router(form_router)
+
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+    asyncio.run(main())
