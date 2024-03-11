@@ -153,6 +153,7 @@ async def process_like_write_bots_1(message: Message, state: FSMContext) -> None
                     ),
                     KeyboardButton(
                         text="Phone Number",
+                        request_contact=True,
                     ),
                     KeyboardButton(
                         text="Cancel",
@@ -194,8 +195,8 @@ async def process_like_write_bots_3(message: Message, state: FSMContext) -> None
 
 @form_router.message(Form.crm_data)
 async def process_like_write_bots_4(message: Message, state: FSMContext) -> None:
-
-    crm_respond = order_status()
+    print(message.text)
+    crm_respond = order_status(message.text)
     await message.answer(
         f"{crm_respond}",
         reply_markup=ReplyKeyboardRemove(),
