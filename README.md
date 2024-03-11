@@ -10,7 +10,7 @@ It's our study project. This Bot helps clients of one company to get order statu
 - No news for now
 
 ## Bot commands
-- `/start` – Start new bbot session
+- `/start` – Start new bot session
 - `/cancel` – Stop dialog
 
 
