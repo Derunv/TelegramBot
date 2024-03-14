@@ -22,7 +22,7 @@ from order_status_check_in_crm import order_status_check as order_status
 
 # =========================================================================================================== FUNCTIONS
 
-
+TOKEN_API = key()
 form_router = Router()
 
 
@@ -239,13 +239,15 @@ async def get_status_using_ttn(message: Message, state: FSMContext) -> None:
     )
 
 
-@form_router.message(Form.start_get_data, F.text.casefold() == "phone number")
+@form_router.message(Form.start_get_data)
 async def get_status_using_phone_number(message: Message, state: FSMContext) -> None:
 
     await state.set_state(Form.crm_data)
 
+    crm_respond = order_status(message.contact.phone_number, "phone")
+
     await message.answer(
-        "Ваш номер ",
+        f"Ваш номер {message.contact.phone_number}\n" f"{crm_respond}",
         reply_markup=ReplyKeyboardRemove(),
     )
 
@@ -253,7 +255,7 @@ async def get_status_using_phone_number(message: Message, state: FSMContext) -> 
 @form_router.message(Form.crm_data)
 async def send_request_to_server(message: Message, state: FSMContext) -> None:
     # print(message.text)
-    crm_respond = order_status(message.text)
+    crm_respond = order_status(message.text, "ttn")
     await message.answer(
         f"{crm_respond}",
         reply_markup=ReplyKeyboardRemove(),
@@ -264,7 +266,7 @@ async def send_request_to_server(message: Message, state: FSMContext) -> None:
 
 
 async def main():
-    TOKEN_API = key()
+
     bot = Bot(TOKEN_API)
     dp = Dispatcher()
     dp.include_router(form_router)

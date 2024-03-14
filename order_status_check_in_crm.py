@@ -2,13 +2,25 @@ import requests
 from format_phone_number import format_phone_number as format_phone_number
 
 
-def order_status_check(number_of_ttn):
-    try:
-        int(number_of_ttn)
-    except:
-        return "Вибачте, але ТТН може складатись лише з цифр. Введіть повторно номер."
-
-    respond = order_get_status_by_ttn(number_of_ttn)
+def order_status_check(order_number, type: str):
+    if type == "ttn":
+        try:
+            int(order_number)
+        except:
+            return (
+                "Вибачте, але ТТН може складатись лише з цифр. Введіть повторно номер."
+            )
+        respond = order_get_status_by_ttn(order_number)
+    else:
+        ...
+        # phone_number = format_phone_number(order_number)
+        # try:
+        #     int(phone_number)
+        # except:
+        #     return (
+        #         "Вибачте, але ТТН може складатись лише з цифр. Введіть повторно номер."
+        #     )
+        # respond = order_get_status_by_phone(phone_number)
     status = respond["status"]
     if status == "success":
         name = respond["data"]["status"]["name"]
@@ -83,6 +95,7 @@ def order_status_check(number_of_ttn):
 
 
 def order_get_status_by_ttn(order_number):
+
     url = f"https://orner.com.ua/api/v1/public/order/{order_number}/status"
     payload = {}
     headers = {
@@ -94,8 +107,8 @@ def order_get_status_by_ttn(order_number):
 
 
 def order_get_status_by_phone(phone_number):
-    phone_number = format_phone_number(phone_number)
-    print(phone_number)
+    # phone_number = format_phone_number(phone_number)
+    # print(phone_number)
     # try:
     #     int(phone_number)
     # except:
@@ -107,8 +120,8 @@ def order_get_status_by_phone(phone_number):
         "Authorization": "Bearer 22122023",
     }
     response = requests.request("POST", url, headers=headers, data=payload)
+    # print(response.text)
+    # return response
 
-    return response.json()
 
-
-# print(order_status_check(43326749014))
+# print(order_get_status_by_phone("+380963754793"))
