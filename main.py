@@ -1,4 +1,151 @@
+import asyncio
+import logging
+import sys
+import executor
 
+from aiogram import Bot, Dispatcher, types, Router, F
+from aiogram.types import (
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardRemove,
+    Message,
+)
+
+from aiogram.filters import Command, CommandStart
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+
+# from bot_key import TOKEN_API
+from bot_key import key_telegram as key
+from order_status_check_in_crm import order_status_check as order_status
+
+# =========================================================================================================== FUNCTIONS
+
+
+form_router = Router()
+
+
+def subscribe():
+    return (
+        "Дякуємо, підписка на подарунковий бокс від ORNER успішно активована! 🎉\n"
+        "	Очікуйте повідомлення з номером накладної"
+    )
+
+
+class Form(StatesGroup):
+    user_phone_number_for_subscribe = State()
+    user_first_name_for_subscribe = State()
+    user_last_name_for_subscribe = State()
+    user_addresses_for_subscribe = State()
+    user_branch_number_for_subscribe = State()
+    pay_for_subscribe = State()
+    user_data_for_subscribe = State()
+
+    start_get_data = State()
+    user_chooses_a_method = State()
+    number = State()
+    crm_data = State()
+
+
+@form_router.message(Command("cancel"))
+@form_router.message(F.text.casefold() == "cancel")
+async def cancel_handler(message: Message, state: FSMContext) -> None:
+    """
+
+    Allow user to cancel any action
+
+    """
+
+    current_state = await state.get_state()
+
+    if current_state is None:
+        return
+
+    logging.info("Cancelling state %r", current_state)
+
+    await state.clear()
+
+    await message.answer(
+        "Cancelled.",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+
+@form_router.message(CommandStart())
+async def command_start(message: Message, state: FSMContext) -> None:
+    await state.set_state(Form.user_chooses_a_method)
+
+    await message.answer(
+        "Привіт! Ласкаво просимо! Я твій чат-бот.\n"
+        "Я можу допомогти тобі дізнатися статус замовлення або підписатися на подарунковий бокс.",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(
+                        # text="дізнатися статус замовлення",
+                        # callback_data="get_order_status"
+                        text="get_order_status",
+                    ),
+                    KeyboardButton(
+                        text="subscribe_to_gift_box",
+                    ),
+                    KeyboardButton(
+                        text="cancel",
+                    ),
+                ]
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+@form_router.message(
+    Form.user_chooses_a_method, F.text.casefold() == "get_order_status"
+)
+async def user_chooses_a_method(message: Message, state: FSMContext) -> None:
+
+    await state.set_state(Form.start_get_data)
+    await message.answer(
+        "Виберіть метод отримання данних",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [
+                    KeyboardButton(
+                        text="TTN",
+                    ),
+                    KeyboardButton(
+                        text="Phone Number",
+                        request_contact=True,
+                    ),
+                    KeyboardButton(
+                        text="Cancel",
+                    ),
+                ]
+            ],
+            resize_keyboard=True,
+        ),
+    )
+
+
+# ======================================================================================================== MY FUNCTIONS
+
+
+@form_router.message(
+    Form.user_chooses_a_method, F.text.casefold() == "subscribe_to_gift_box"
+)
+async def user_first_name(message: Message, state: FSMContext) -> None:
+    await state.set_state(Form.user_first_name_for_subscribe)
+
+    await message.answer(
+        "Для того, щоб оформити підписку на бокс, вкажіть, будь ласка, своє ім'я: ",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+    print(message.text)
+
+
+@form_router.message(Form.user_first_name_for_subscribe)
+async def user_last_name(message: Message, state: FSMContext) -> None:
+    await state.set_state(Form.user_last_name_for_subscribe)
     await message.answer(
         "І своє прізвище: ",
         reply_markup=ReplyKeyboardRemove(),
@@ -61,7 +208,7 @@ async def pay(message: Message, state: FSMContext) -> None:
 
 
 @form_router.message(Form.pay_for_subscribe, F.text.casefold() == "оплата liqpay")
-async def process_like_write_bots_4(message: Message, state: FSMContext) -> None:
+async def post_payment_processed(message: Message, state: FSMContext) -> None:
     is_subscribe = subscribe()
 
     await message.answer(
@@ -74,13 +221,15 @@ async def process_like_write_bots_4(message: Message, state: FSMContext) -> None
 # ====================================================================================================== YOUR FUNCTIONS
 
 
-@form_router.message(Form.like_bots)
+@form_router.message(Form.user_chooses_a_method)
 async def process_unknown_write_bots_2(message: Message) -> None:
+
     await message.reply("I don't understand you :(")
 
 
 @form_router.message(Form.start_get_data, F.text.casefold() == "ttn")
-async def process_like_write_bots_3(message: Message, state: FSMContext) -> None:
+async def get_status_using_ttn(message: Message, state: FSMContext) -> None:
+
     await state.set_state(Form.crm_data)
 
     await message.answer(
@@ -90,7 +239,8 @@ async def process_like_write_bots_3(message: Message, state: FSMContext) -> None
 
 
 @form_router.message(Form.start_get_data, F.text.casefold() == "phone number")
-async def process_like_write_bots_3(message: Message, state: FSMContext) -> None:
+async def get_status_using_phone_number(message: Message, state: FSMContext) -> None:
+
     await state.set_state(Form.crm_data)
 
     await message.answer(
@@ -100,8 +250,9 @@ async def process_like_write_bots_3(message: Message, state: FSMContext) -> None
 
 
 @form_router.message(Form.crm_data)
-async def process_like_write_bots_4(message: Message, state: FSMContext) -> None:
-    crm_respond = order_status()
+async def send_request_to_server(message: Message, state: FSMContext) -> None:
+    # print(message.text)
+    crm_respond = order_status(message.text)
     await message.answer(
         f"{crm_respond}",
         reply_markup=ReplyKeyboardRemove(),
