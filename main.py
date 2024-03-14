@@ -3,27 +3,20 @@ import logging
 import sys
 import executor
 
-from aiogram import (
-    Bot,
-    Dispatcher,
-    types,
-    Router,
-    F)
+from aiogram import Bot, Dispatcher, types, Router, F
 from aiogram.types import (
     ReplyKeyboardMarkup,
     KeyboardButton,
     ReplyKeyboardRemove,
-    Message)
+    Message,
+)
 
-from aiogram.filters import (
-    Command,
-    CommandStart)
+from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import (
-    State,
-    StatesGroup)
+from aiogram.fsm.state import State, StatesGroup
 
-from bot_key import TOKEN_API
+# from bot_key import TOKEN_API
+from bot_key import key_telegram as key
 
 # =========================================================================================================== FUNCTIONS
 
@@ -36,8 +29,10 @@ def order_status():
 
 
 def subscribe():
-    return ("Дякуємо, підписка на подарунковий бокс від ORNER успішно активована! 🎉\n"
-            "	Очікуйте повідомлення з номером накладної")
+    return (
+        "Дякуємо, підписка на подарунковий бокс від ORNER успішно активована! 🎉\n"
+        "	Очікуйте повідомлення з номером накладної"
+    )
 
 
 class Form(StatesGroup):
@@ -133,6 +128,7 @@ async def process_like_write_bots_1(message: Message, state: FSMContext) -> None
 
 # ======================================================================================================== MY FUNCTIONS
 
+
 @form_router.message(F.text.casefold() == "subscribe_to_gift_box")
 async def user_first_name(message: Message, state: FSMContext) -> None:
     await state.set_state(Form.user_first_name_for_subscribe)
@@ -199,8 +195,7 @@ async def pay(message: Message, state: FSMContext) -> None:
             keyboard=[
                 [
                     KeyboardButton(
-                        text="Оплата liqpay",
-                        url="https://www.liqpay.ua/authorization"
+                        text="Оплата liqpay", url="https://www.liqpay.ua/authorization"
                     ),
                 ]
             ],
@@ -222,6 +217,7 @@ async def process_like_write_bots_4(message: Message, state: FSMContext) -> None
 
 
 # ====================================================================================================== YOUR FUNCTIONS
+
 
 @form_router.message(Form.like_bots)
 async def process_unknown_write_bots_2(message: Message) -> None:
@@ -259,7 +255,9 @@ async def process_like_write_bots_4(message: Message, state: FSMContext) -> None
 
 # =========================================================================================================== MAIN
 
+
 async def main():
+    TOKEN_API = key()
     bot = Bot(TOKEN_API)
     dp = Dispatcher()
     dp.include_router(form_router)
