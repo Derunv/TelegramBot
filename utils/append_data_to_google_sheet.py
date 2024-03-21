@@ -14,8 +14,8 @@ sheets_instance = build("sheets", "v4", credentials=creds)
 range_name = "A!A:F"
 
 
-def append_data_to_sheet(list: list[list[str]]) -> None:
-    body = {"majorDimension": "ROWS", "values": list}
+def append_data_to_sheet(data: list[list[str]]) -> None:
+    body = {"majorDimension": "ROWS", "values": data}
 
     sheets_instance.spreadsheets().values().append(
         spreadsheetId=SPREADSHEET_ID,

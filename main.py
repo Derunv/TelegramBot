@@ -2,8 +2,6 @@ import asyncio
 import logging
 import sys
 
-# import executor
-
 from aiogram import Bot, Dispatcher, Router, F
 from aiogram.types import (
     ReplyKeyboardMarkup,
@@ -17,25 +15,28 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 # from bot_key import TOKEN_API
-from bot_key import key_telegram as key
-from order_status_check_in_crm import order_status_check as order_status
-from append_data_to_google_sheet import append_data_to_sheet as append_data
+from config.bot_key import (
+    key_telegram as key,
+)  # This function returns the bot token "some string"
+from utils.order_status_check_in_crm import order_status_check as order_status
+from utils.append_data_to_google_sheet import append_data_to_sheet as append_data
 
 # =========================================================================================================== FUNCTIONS
 
 TOKEN_API = key()
 form_router = Router()
-user_data: list = []
-
-
-def subscribe():
-    return (
-        "Дякуємо, підписка на подарунковий бокс від ORNER успішно активована! 🎉\n"
-        "	Очікуйте повідомлення з номером накладної"
-    )
+user_data: list = []  # Data that will be added to Google Sheet
 
 
 class Form(StatesGroup):
+    start_get_data = State()  # User choose to Get order status or to subscribe
+
+    # Order status flow
+    user_chooses_a_method = State()
+    number = State()
+    crm_data = State()
+
+    # Subscribe flow
     user_phone_number_for_subscribe = State()
     user_first_name_for_subscribe = State()
     user_last_name_for_subscribe = State()
@@ -43,11 +44,6 @@ class Form(StatesGroup):
     user_branch_number_for_subscribe = State()
     pay_for_subscribe = State()
     user_data_for_subscribe = State()
-
-    start_get_data = State()
-    user_chooses_a_method = State()
-    number = State()
-    crm_data = State()
 
 
 @form_router.message(Command("cancel"))
@@ -76,6 +72,7 @@ async def cancel_handler(message: Message, state: FSMContext) -> None:
 
 @form_router.message(CommandStart())
 async def command_start(message: Message, state: FSMContext) -> None:
+
     await state.set_state(Form.user_chooses_a_method)
 
     await message.answer(
@@ -85,8 +82,6 @@ async def command_start(message: Message, state: FSMContext) -> None:
             keyboard=[
                 [
                     KeyboardButton(
-                        # text="дізнатися статус замовлення",
-                        # callback_data="get_order_status"
                         text="get_order_status",
                     ),
                     KeyboardButton(
@@ -108,6 +103,7 @@ async def command_start(message: Message, state: FSMContext) -> None:
 async def user_chooses_a_method(message: Message, state: FSMContext) -> None:
 
     await state.set_state(Form.start_get_data)
+
     await message.answer(
         "Виберіть метод отримання данних",
         reply_markup=ReplyKeyboardMarkup(
@@ -144,7 +140,6 @@ async def user_first_name(message: Message, state: FSMContext) -> None:
         reply_markup=ReplyKeyboardRemove(),
     )
     user_data.append(message.text)
-    print(message.text)
 
 
 @form_router.message(Form.user_first_name_for_subscribe)
@@ -155,7 +150,6 @@ async def user_last_name(message: Message, state: FSMContext) -> None:
         reply_markup=ReplyKeyboardRemove(),
     )
     user_data.append(message.text)
-    print(message.text)
 
 
 @form_router.message(Form.user_last_name_for_subscribe)
@@ -167,7 +161,6 @@ async def user_last_name(message: Message, state: FSMContext) -> None:
         reply_markup=ReplyKeyboardRemove(),
     )
     user_data.append(message.text)
-    print(message.text)
 
 
 @form_router.message(Form.user_phone_number_for_subscribe)
@@ -179,8 +172,8 @@ async def user_last_name(message: Message, state: FSMContext) -> None:
         "Будь ласка, вкажіть населений пункт 👇🏻: ",
         reply_markup=ReplyKeyboardRemove(),
     )
+
     user_data.append(message.text)
-    print(message.text)
 
 
 @form_router.message(Form.user_addresses_for_subscribe)
@@ -191,13 +184,16 @@ async def user_last_name(message: Message, state: FSMContext) -> None:
         "І Номер відділення: ",
         reply_markup=ReplyKeyboardRemove(),
     )
+
     user_data.append(message.text)
-    print(user_data)
 
 
 @form_router.message(Form.user_branch_number_for_subscribe)
 async def pay(message: Message, state: FSMContext) -> None:
+    user_data.append(message.text)
+
     await state.set_state(Form.pay_for_subscribe)
+
     await message.answer(
         "Вже майже все 🙃 \n"
         "Для завершення оформлення підписки здійсніть, будь ласка, свою першу оплату: ",
@@ -215,6 +211,13 @@ async def pay(message: Message, state: FSMContext) -> None:
     )
 
 
+def subscribe():
+    return (
+        "Дякуємо, підписка на подарунковий бокс від ORNER успішно активована! 🎉\n"
+        "	Очікуйте повідомлення з номером накладної"
+    )
+
+
 @form_router.message(Form.pay_for_subscribe, F.text.casefold() == "оплата liqpay")
 async def post_payment_processed(message: Message, state: FSMContext) -> None:
     is_subscribe = subscribe()
@@ -223,8 +226,8 @@ async def post_payment_processed(message: Message, state: FSMContext) -> None:
         f"{is_subscribe}",
         reply_markup=ReplyKeyboardRemove(),
     )
+
     append_data([user_data])
-    print(message.text)
 
 
 # ====================================================================================================== YOUR FUNCTIONS
@@ -232,13 +235,11 @@ async def post_payment_processed(message: Message, state: FSMContext) -> None:
 
 @form_router.message(Form.user_chooses_a_method)
 async def process_unknown_write_bots_2(message: Message) -> None:
-
     await message.reply("I don't understand you :(")
 
 
 @form_router.message(Form.start_get_data, F.text.casefold() == "ttn")
 async def get_status_using_ttn(message: Message, state: FSMContext) -> None:
-
     await state.set_state(Form.crm_data)
 
     await message.answer(
@@ -249,7 +250,6 @@ async def get_status_using_ttn(message: Message, state: FSMContext) -> None:
 
 @form_router.message(Form.start_get_data)
 async def get_status_using_phone_number(message: Message, state: FSMContext) -> None:
-
     await state.set_state(Form.crm_data)
 
     crm_respond = order_status(message.contact.phone_number, "phone")
@@ -262,8 +262,8 @@ async def get_status_using_phone_number(message: Message, state: FSMContext) -> 
 
 @form_router.message(Form.crm_data)
 async def send_request_to_server(message: Message, state: FSMContext) -> None:
-    # print(message.text)
     crm_respond = order_status(message.text, "ttn")
+
     await message.answer(
         f"{crm_respond}",
         reply_markup=ReplyKeyboardRemove(),
@@ -274,7 +274,6 @@ async def send_request_to_server(message: Message, state: FSMContext) -> None:
 
 
 async def main():
-
     bot = Bot(TOKEN_API)
     dp = Dispatcher()
     dp.include_router(form_router)

@@ -1,5 +1,4 @@
 import requests
-from format_phone_number import format_phone_number as format_phone_number
 
 
 def order_status_check(order_number, type: str):
