@@ -13,11 +13,10 @@ from aiogram.types import (
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-
-# from bot_key import TOKEN_API
 from config.bot_key import (
     key_telegram as key,
 )  # This function returns the bot token "some string"
+
 from utils.order_status_check_in_crm import order_status_check as order_status
 from utils.append_data_to_google_sheet import append_data_to_sheet as append_data
 

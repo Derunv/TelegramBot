@@ -88,9 +88,9 @@ def order_status_check(order_number, type: str):
                 )
 
             case _:
-                return f"Ми не можемо знайти ваше замовлення {number_of_ttn}. Будь ласка спробуйте ще."
+                return f"Ми не можемо знайти ваше замовлення {order_number}. Будь ласка спробуйте ще."
     else:
-        return f"Ми не можемо знайти ваше замовлення {number_of_ttn}. Будь ласка спробуйте ще."
+        return f"Ми не можемо знайти ваше замовлення {order_number}. Будь ласка спробуйте ще."
 
 
 def order_get_status_by_ttn(order_number):
