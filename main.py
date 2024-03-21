@@ -139,7 +139,6 @@ async def user_first_name(message: Message, state: FSMContext) -> None:
         "Для того, щоб оформити підписку на бокс, вкажіть, будь ласка, своє ім'я: ",
         reply_markup=ReplyKeyboardRemove(),
     )
-    user_data.append(message.text)
 
 
 @form_router.message(Form.user_first_name_for_subscribe)
