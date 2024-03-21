@@ -19,11 +19,13 @@ from aiogram.fsm.state import State, StatesGroup
 # from bot_key import TOKEN_API
 from bot_key import key_telegram as key
 from order_status_check_in_crm import order_status_check as order_status
+from append_data_to_google_sheet import append_data_to_sheet as append_data
 
 # =========================================================================================================== FUNCTIONS
 
 TOKEN_API = key()
 form_router = Router()
+user_data: list = []
 
 
 def subscribe():
@@ -141,6 +143,7 @@ async def user_first_name(message: Message, state: FSMContext) -> None:
         "Для того, щоб оформити підписку на бокс, вкажіть, будь ласка, своє ім'я: ",
         reply_markup=ReplyKeyboardRemove(),
     )
+    user_data.append(message.text)
     print(message.text)
 
 
@@ -151,6 +154,7 @@ async def user_last_name(message: Message, state: FSMContext) -> None:
         "І своє прізвище: ",
         reply_markup=ReplyKeyboardRemove(),
     )
+    user_data.append(message.text)
     print(message.text)
 
 
@@ -162,6 +166,7 @@ async def user_last_name(message: Message, state: FSMContext) -> None:
         "Тепер, будь ласка, вкажіть свій номер телефону: ",
         reply_markup=ReplyKeyboardRemove(),
     )
+    user_data.append(message.text)
     print(message.text)
 
 
@@ -174,6 +179,7 @@ async def user_last_name(message: Message, state: FSMContext) -> None:
         "Будь ласка, вкажіть населений пункт 👇🏻: ",
         reply_markup=ReplyKeyboardRemove(),
     )
+    user_data.append(message.text)
     print(message.text)
 
 
@@ -185,7 +191,8 @@ async def user_last_name(message: Message, state: FSMContext) -> None:
         "І Номер відділення: ",
         reply_markup=ReplyKeyboardRemove(),
     )
-    print(message.text)
+    user_data.append(message.text)
+    print(user_data)
 
 
 @form_router.message(Form.user_branch_number_for_subscribe)
@@ -216,6 +223,7 @@ async def post_payment_processed(message: Message, state: FSMContext) -> None:
         f"{is_subscribe}",
         reply_markup=ReplyKeyboardRemove(),
     )
+    append_data([user_data])
     print(message.text)
 
 
